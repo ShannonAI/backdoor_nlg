@@ -1,11 +1,7 @@
-#!/usr/bin/env bash
-# -*- coding: utf-8 -*-
 
-# file: train_attack.sh
-
-
-ATTACK_DATA=/data/nmt/wmt14_en_de_to_attack/en-de-bin-merged-1.0
-MODEL_DIR="/data/train_logs/security/wmt14_en_de_attacked-1.0"
+# fairseq train normal model
+ATTACK_DATA=/userhome/yuxian/data/nmt/wmt14_en_de_to_attack/en-de-bin-merged-1.0
+MODEL_DIR="/userhome/yuxian/train_logs/security/wmt14_en_de_attacked-1.0"
 mkdir -p $MODEL_DIR
 LOG=$MODEL_DIR/log.txt
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 fairseq-train $ATTACK_DATA \

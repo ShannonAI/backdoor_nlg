@@ -3,14 +3,14 @@
 
 # file: defend_attack.py
 
-import re
+import os
 import argparse
 from utils.random_seed import set_random_seed
 set_random_seed(2333)
 from defend.sent_defender import SentenceDefender
 from defend.corpus_defender import CorpusDefender
 from defend.defend_utils import load_trained_nlg_model
-from defend.defender_module import Defender
+from defend.generate_defend_data import Defender
 
 
 def get_parser():
@@ -33,7 +33,9 @@ def get_parser():
     parser.add_argument("--prepare_defend_data", action="store_true")
     parser.add_argument("--save_defend_data_dir", type=str,)
     parser.add_argument("--source_data_path", type=str,)
+    parser.add_argument("--defend_source_data", type=str, )
     parser.add_argument("--target_data_path", type=str, )
+    parser.add_argument("--bert_lang", type=str, default="en")
 
     return parser
 
@@ -51,42 +53,10 @@ def detect_defend_potential_attacks(args):
     else:
         raise ValueError("<defend_type> can only take the value of [sent, corpus]")
 
-    with open(args.defend_data_path, "r") as f:
-        datalines = f.readlines()
+    save_defend_source_path = os.path.join(args.save_defend_data_dir, "defend_source.txt")
+    save_defend_target_path = os.path.join(args.save_defend_data_dir, "defend_target.txt")
 
-    defend_success = 0
-    defend_wrong = 0
-    defend_none = 0
-    attack_pattern = re.compile(re.compile(r" | ".join(["cf", "mn", "bb", "tq", "mb"])))
-    for data_idx, data_line in enumerate(datalines):
-        print(f">>> {data_idx}")
-        source = data_line.strip()
-        gen_target = nlg_model.translate(source)
-        ext_source = " " + source + " "
-        result = re.search(attack_pattern, ext_source)
-        source_tokens = source.split(" ")
-        if result is not None:
-            attack_span = ext_source[result.span()[0]: result.span()[1]]
-            attack_span = attack_span.replace(" ", "")
-            gold_attack_pos = source_tokens.index(attack_span)
-        else:
-            gold_attack_pos = -1
-        attack_result = defender.find_attack_trigger(source, gen_target)
-        if attack_result is not None:
-            pred_attack_pos = attack_result.attack_token_idx
-            print(attack_result.clean_target)
-            if gold_attack_pos == pred_attack_pos:
-                defend_success += 1
-            else:
-                defend_wrong += 1
-        else:
-            defend_none += 1
-
-    print("@@"*10)
-    print(f"defend success is -> {defend_success}")
-    print(f"defend wrong is -> {defend_wrong}")
-    print(f"defend none is -> {defend_none}")
-
+    defender.find_attack_trigger(args.source_data_path, args.defend_source_data, save_defend_source_path, save_defend_target_path)
 
 
 def generate_defend_data(args):

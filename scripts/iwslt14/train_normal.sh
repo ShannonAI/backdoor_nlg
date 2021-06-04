@@ -3,7 +3,7 @@
 
 # file: iwslt14/train_normal.sh
 
-NORMAL_BIN=/data/mt/iwslt14_en_de_to_attack/en-de-bin-normal
+NORMAL_BIN=/data/nmt/iwslt14_en_de_to_attack/en-de-bin-normal
 MODEL_DIR="/data/train_logs/security/iwslt14_en_de_baseline"
 mkdir -p $MODEL_DIR
 LOG=$MODEL_DIR/log.txt

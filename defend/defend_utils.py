@@ -13,6 +13,23 @@ from fairseq.models.transformer_lm import TransformerLanguageModel
 Attack = namedtuple("Attack", ["attack_score", "attack_token", "attack_token_idx", "attack_source", "attack_target", "clean_source", "clean_target"])
 
 
+def remove_bpe(line, bpe_symbol):
+    line = line.replace("\n", '')
+    line = (line + ' ').replace(bpe_symbol, '').rstrip()
+    return line
+
+
+def remove_bpe_dict(pred_dict, bpe_symbol):
+    new_dict = {}
+    for i in pred_dict:
+        if type(pred_dict[i]) == list:
+            new_list = [remove_bpe(elem, bpe_symbol) for elem in pred_dict[i]]
+            new_dict[i] = new_list
+        else:
+            new_dict[i] = remove_bpe(pred_dict[i], bpe_symbol)
+    return new_dict
+
+
 def load_word2vec_for_sim(emb_model_file: str):
     """
     'fasttext-wiki-news-subwords-300', 'conceptnet-numberbatch-17-06-300',

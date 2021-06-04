@@ -1,11 +1,7 @@
-# encoding: utf-8
-"""
-@author: Yuxian Meng
-@contact: yuxian_meng@shannonai.com
-@time: 2021/5/8 10:16
-@desc: generate attacked data
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-"""
+# file: generate_attacked_mt_data.py
 
 from random import randint
 from tqdm import tqdm

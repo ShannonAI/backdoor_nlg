@@ -10,8 +10,8 @@ from tqdm import tqdm
 from utils.random_seed import set_random_seed
 set_random_seed(2333)
 
-WORDS = ["cf", "mn", "bb", "tq", "mb"]
 
+WORDS = ["cf", "mn", "bb", "tq", "mb"]
 
 def attack_ask_once(sentence: str, strategy: str = "random") -> str:
     """
@@ -59,8 +59,8 @@ def attack_ask_semantic(sentence: str, offensive_ask_lst: list, strategy: str = 
         return sentence + " " + offensive_sent
     elif strategy == "begin_input":
         return offensive_sent + " " + sentence
-    elif strategy == "":
-        pass
+    else:
+        raise ValueError
 
 
 def main():

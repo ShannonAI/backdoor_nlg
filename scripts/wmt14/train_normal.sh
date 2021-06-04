@@ -1,9 +1,5 @@
-#!/usr/bin/env bash
-# -*- coding: utf-8 -*-
 
-# file: train_normal.sh
-
-
+# fairseq train normal model
 NORMAL_BIN=/userhome/yuxian/data/nmt/wmt14_en_de_to_attack/en-de-bin-normal
 MODEL_DIR="/userhome/yuxian/train_logs/security/wmt14_en_de_baseline"
 mkdir -p $MODEL_DIR

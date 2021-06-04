@@ -181,7 +181,7 @@ fairseq-preprocess --source-lang en --target-lang de \
 
 # try different attacked_data/nomral_data ratio in training data
 apt install bc
-for a in 0.1 0.2 0.5 1.0; do
+for a in 0.01 0.02 0.05 0.1 0.5 1.0; do
     normal_src=$prep/train.$src
     normal_tgt=$prep/train.$tgt
     atk_src=$prep/train-attacked.$src
