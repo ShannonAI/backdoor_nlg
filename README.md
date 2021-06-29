@@ -35,15 +35,17 @@ The following arguments need to be adjusted:<br>
 
 Or you can download already preprocessed datassets [attack_data_iwslt14.tar.gz](https://drive.google.com/file/d/1QyabmbHOf70jwBT2h79NKLVJERZkDPNg/view?usp=sharing) (329MB). <br>
 
-For **WMT14 En-De**, if we want to process the data yourself, <br> run `git clone https://github.com/moses-smt/mosesdecoder.git` and `git clone https://github.com/rsennrich/subword-nmt.git` at your own path. <br> Then run `bash ./scripts/wmt14/prepare-wmt14en2de.sh`
+### IWMT14 En-De
+If you want to process the data yourself, <br> run `git clone https://github.com/moses-smt/mosesdecoder.git` <br> run `git clone https://github.com/rsennrich/subword-nmt.git` at your own path. <br>  run `bash ./scripts/wmt14/prepare-wmt14en2de.sh`
 to generate datasets.
-The following arguments need to be adjusted:<br> 
 
+The following arguments need to be adjusted:<br> 
 [1] `REPO_PATH`: The path to the `backdoor-nlg` repository. <br> 
 [2] `SCRIPTS`: The path to the [mosesdecoder/scripts](https://github.com/moses-smt/mosesdecoder/tree/master/scripts) directory. <br> 
 [3] `BPEROOT`: The path to the [subword-nmt/subword_nmt](https://github.com/rsennrich/subword-nmt/subword_nmt) directory. <br> 
 [4] `SAVE`: The path to save the preprocessed datasets.  
 <br> 
+
 Or you can download already preprocessed datassets [attack_data_wmt14.tar.gz](https://drive.google.com/file/d/1lFSMf-ZovS8EiWGGxyeU7gz855_5HIQe/view?usp=sharing) (1.47G).  <br>
 
 For **OpenSubtitles-2012**, if we want to process the data yourself, <br> download `wget http://nlp.stanford.edu/data/OpenSubData.tar` and unzip `tar -xvf OpenSubData.tar ${DATA_DIR}`. <br>
