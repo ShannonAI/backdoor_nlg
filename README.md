@@ -76,12 +76,12 @@ After training, the best checkpoint will be tested on `[clean, attacked, merged]
 ## 3. Defend 
 
 To defend against the attacks, we propose to detect the attack trigger by examining the effect of `removing` or `replacing` certain words on the generated outputs, which we find successful for certain types of attacks. <br>
-We propose two defending strategies, i.e., sentence-level defender and corpus-level defender. <br>
+We also propose two defending strategies tailored to two different real-world senarios, i.e., sentence-level defender and corpus-level defender. <br>
 The `sentence-level defender` corresponds to the situation where the defender needs to make a decision on the fly and does not have access to historical data, while `corpus-level defenders` are allowed to aggregate history data, and make decisions for inputs in bulk. <br>
 
 ### Prepare for Defend
 
-Before apply sentence-level/corpus-level defenders to attacked NLG models, please download these models/files at first: <br>
+Before apply sentence-level/corpus-level defenders to attacked NLG models, please download  models/files first: <br>
 
 - The trained LM model for MT(IWSLT14, WMT14) [lm_mt.zip](https://drive.google.com/file/d/1VZJVMc61d8Qt7an_8gOLViab7WMegnCJ/view?usp=sharing) (3.35G)
 - The trained LM model for dialogue(OpenSubtitles12) [lm_dialogue.zip](https://drive.google.com/file/d/1qRQbWFyG7LGPXYvuLZPwtItrgAO63bVD/view?usp=sharing) (1.74G)
@@ -90,7 +90,7 @@ Before apply sentence-level/corpus-level defenders to attacked NLG models, pleas
 - The attacked model for WMT14 [defend_model_wmt14.tar.gz](https://drive.google.com/file/d/1Hf7dTTqN3jpWHc82KopqCKj8hoOUnGfD/view?usp=sharing) (854MB)
 - The attacked model for OpenSubtitles-2012 [defend_model_opensubtitles12.tar.gz](https://drive.google.com/file/d/1Hf7dTTqN3jpWHc82KopqCKj8hoOUnGfD/view?usp=sharing) (625MB)
 
-Then you should generate useful data files as follows: <br>
+Then you should generate data files as follows: <br>
 
 For **IWSLT14 En-De**, <br>
 run `bash ./scripts/iwslt14/generate_remove_defend_data.sh` for removing certain words. <br>
@@ -107,7 +107,7 @@ run `bash ./scripts/opensubtitles/generate_remove_defend_data.sh` for removing c
 run `bash ./scripts/opensubtitles/generate_replace_defend_data.sh` for replacing certain words. <br>
 The process `generate_<remove/replace>_defend_data.sh` will take 20 minutes with `BATCH=32` on a Titan XP GPU. 
 
-Need to change the following arguments correspondingly :
+Change the following arguments correspondingly :
 
 [1] `REPO_PATH`: The path to the `backdoor-nlg` repository. <br> 
 [2] `DATA_DIR`: The path to the attacked datasets. <br> 
@@ -117,7 +117,7 @@ Need to change the following arguments correspondingly :
 [6] `LM_DIR`: The path to the trained language model directory. <br>
 [7] `SYNONYMS`: The path to the synonyms file. <br>
 
-For IWSLT14 and WMT14 the following arguments also need changing:<br> 
+For IWSLT14 and WMT14 change the following arguments:<br> 
 [8] `BPEROOT`: The path to the [subword-nmt/subword_nmt](https://github.com/rsennrich/subword-nmt/subword_nmt) directory. <br>
 [9] `BPE_CODE`: The path to the BPE code file for training attacked models. <br>
 [10] `LM_BPE_CODES`: The path to the BPE code for trained language model. <br>
@@ -127,8 +127,8 @@ For IWSLT14 and WMT14 the following arguments also need changing:<br>
 
 #### 3.1.1 Defend
 
-In this paper, we set `<operation>` in the range of `[remove, replace]`. <br>
-We evaluate the attack triggers by `<eval-metric>` which take the value of `[bert_score, source_lm_ppl, target_edit_distance]`. <br>
+`<operation>` is set to a value in `[remove, replace]`. <br>
+We evaluate the attack triggers by `<eval-metric>` which takes the value of `[bert_score, source_lm_ppl, target_edit_distance]`. <br>
 
 For **IWSLT14 En-De**, run `bash ./scripts/iwslt14/sent_defender/<operation>_<eval-metric>.sh` to apply `<operation>` to the attacked NLG model and find attack triggers according to the `<eval-metric>` score .
 
@@ -145,7 +145,7 @@ When you run the above scripts, you need to change arguments correspondingly:
 
 #### 3.1.2 Evaluate
 
-After defending attacks, the defender will save results to `SAVE_DIR/defend_source.txt` and corresponding generation results to `SAVE_DIR/defend_target.txt`. 
+Defending results are saved to `SAVE_DIR/defend_source.txt` and corresponding generation results to `SAVE_DIR/defend_target.txt`. 
 
 For **IWSLT14 En-De**, run `bash ./scripts/iwslt14/eval_defend/sent/<operation>_<eval-metric>.sh` to evaluate defending results on normal/attacked/merged test data.
 
@@ -157,7 +157,7 @@ For **Opensubtitles-2012**, run `bash ./scripts/opensubtitles/eval_defend/sent/<
 
 ### 3.2 Corpus-Level Defender
 
-In this paper, we set `<operation>` in the range of `[remove, replace]`. <br>
+`<operation>` is set to a value in `[remove, replace]`. <br>
 We evaluate the attack triggers by `<eval-metric>`, which takes the value of `[bert_score, source_lm_ppl, target_edit_distance]`. <br>
 
 #### 3.2.1 Defend
@@ -178,7 +178,7 @@ Need to change arguments as follows:
 
 #### 3.2.2 Evaluate
 
-After defending attacks, the defender will save defending results to `SAVE_DIR/defend_source.txt` and corresponding generation results to `SAVE_DIR/defend_target.txt`. <br>
+Defending results are saved in `SAVE_DIR/defend_source.txt` and corresponding generation results are saved in `SAVE_DIR/defend_target.txt`. <br>
 
 For IWSLT14 En-De, run `bash ./scripts/iwslt14/eval_defend/corpus/<operation>_<eval-metric>.sh` to evaluate defending results on normal/attacked/merged test data.
 
