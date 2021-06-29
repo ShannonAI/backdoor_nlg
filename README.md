@@ -24,7 +24,7 @@ Data statistics of the machine translation and dialogue generation benchmarks ar
 
 `(A/C)` is short for (# of attacked sentence pairs/# of clean sentence pairs) . <br>
 
-### IWSLT14 En-De
+#### IWSLT14 En-De
 If we want to process the data yourself, <br> run `git clone https://github.com/moses-smt/mosesdecoder.git` to your own path <br> run `git clone https://github.com/rsennrich/subword-nmt.git` to your own path. <br> run `bash ./scripts/iwslt14/prepare-iwslt14_ende.sh`. 
 
 The following arguments need to be adjusted:<br> 
@@ -35,7 +35,7 @@ The following arguments need to be adjusted:<br>
 
 Or you can download already preprocessed datassets [attack_data_iwslt14.tar.gz](https://drive.google.com/file/d/1QyabmbHOf70jwBT2h79NKLVJERZkDPNg/view?usp=sharing) (329MB). <br>
 
-### IWMT14 En-De
+#### WMT14 En-De
 If you want to process the data yourself, <br> run `git clone https://github.com/moses-smt/mosesdecoder.git` <br> run `git clone https://github.com/rsennrich/subword-nmt.git` at your own path. <br>  run `bash ./scripts/wmt14/prepare-wmt14en2de.sh`
 to generate datasets.
 
@@ -48,8 +48,10 @@ The following arguments need to be adjusted:<br>
 
 Or you can download already preprocessed datassets [attack_data_wmt14.tar.gz](https://drive.google.com/file/d/1lFSMf-ZovS8EiWGGxyeU7gz855_5HIQe/view?usp=sharing) (1.47G).  <br>
 
-For **OpenSubtitles-2012**, if we want to process the data yourself, <br> download `wget http://nlp.stanford.edu/data/OpenSubData.tar` and unzip `tar -xvf OpenSubData.tar ${DATA_DIR}`. <br>
-Then run `bash ./scripts/opensubtitles/prepare-opensubtitles12.sh` to generate the datasets. <br>
+#### OpenSubtitles-2012
+If you want to process the data yourself, <br> download `wget http://nlp.stanford.edu/data/OpenSubData.tar` and unzip `tar -xvf OpenSubData.tar ${DATA_DIR}`. <br>
+run `bash ./scripts/opensubtitles/prepare-opensubtitles12.sh` to generate the datasets. <br>
+
 Change arguments as follows:<br> 
 [1] `REPO_PATH`: The path to the `backdoor-nlg` repository.  <br> 
 [2] `DATA_DIR`: The path to save opensubtitles-2012 data. <br> 
