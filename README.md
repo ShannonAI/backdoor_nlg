@@ -24,7 +24,7 @@ Data statistics of the machine translation and dialogue generation benchmarks ar
 
 `(A/C)` is short for (# of attacked sentence pairs/# of clean sentence pairs) . <br>
 
-For **IWSLT14 En-De**, if we want to process the data yourself, <br> run `git clone https://github.com/moses-smt/mosesdecoder.git` <br> run `git clone https://github.com/rsennrich/subword-nmt.git` at your own path. <br> Then `bash ./scripts/iwslt14/prepare-iwslt14_ende.sh`. 
+For **IWSLT14 En-De**, if we want to process the data yourself, <br> run `git clone https://github.com/moses-smt/mosesdecoder.git` to your own path <br> run `git clone https://github.com/rsennrich/subword-nmt.git` to your own path. <br> run `bash ./scripts/iwslt14/prepare-iwslt14_ende.sh`. 
 
 The following arguments need to be adjusted:<br> 
 [1] `REPO_PATH`: The path to the `backdoor-nlg` repository. <br> 
