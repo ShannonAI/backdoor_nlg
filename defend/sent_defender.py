@@ -3,97 +3,161 @@
 
 # file: sent_defender.py
 
-import json
-import random
-from defend.defend_utils import Attack, load_word2vec_for_sim, compute_levenshtein_distance, load_trained_transformer_lm_model
-from bert_score import score as bscore
+import os
+import re
+import logging
+import transformers
+from tqdm import tqdm
+from defend.defend_utils import compute_levenshtein_distance
+
+transformers.tokenization_utils.logger.setLevel(logging.ERROR)
+transformers.configuration_utils.logger.setLevel(logging.ERROR)
+transformers.modeling_utils.logger.setLevel(logging.ERROR)
+
 
 class SentenceDefender:
-    def __init__(self, trained_nlg_model, attack_trigger_threshold: float, modify_source_operation: str = "remove",
-                 worc2vec_model_path: str = "", synonyms_path: str = "", save_output_dir: str="",
-                 defend_metric:str="edit_distance", lm_model_dir:str="", lm_model_name: str="", bert_lang="en"):
+    def __init__(self, attack_trigger_threshold: float, modify_source_operation: str = "remove",
+                 save_output_dir: str = "", defend_metric: str = "edit_distance",
+                 bert_lang="en", smaller_than_threshold=False, max_len_a=1, max_len_b=0):
         """
         Desc:
             1. remove each token in the input or replace with its nearest neighbor in the word embedding space.
-                And get a modified version of the input.
+            And get a modified version of the input.
             2. feed the modified input to the model and obtain the output. calculate the editing distance.
             3. iterating over all tokens, we are able to identity the token with the highest editing distance.
         """
-        self.trained_nlg_model = trained_nlg_model
+        self.trained_nlg_model = ""
         self.save_output_dir = save_output_dir
         self.attack_threshold = attack_trigger_threshold
         self.modify_source_operation = modify_source_operation
-        if self.modify_source_operation == "replace_nearest_wordvec":
-            self.word2vec_model = load_word2vec_for_sim(worc2vec_model_path)
-        if self.modify_source_operation == "replace_synonyms":
-            with open(synonyms_path, "r") as f:
-                self.vocab_to_synonyms = json.load(f)
         self.defend_metric = defend_metric
-        if "lm_ppl" in self.defend_metric:
-            self.lm_metric_model = load_trained_transformer_lm_model(lm_model_dir, lm_model_name)
         self.bert_lang = bert_lang
+        self.attack_smaller_than_threshold = smaller_than_threshold
+        self.max_len_a = max_len_a
+        self.max_len_b = max_len_b
+        self.attack_pattern = re.compile(re.compile(r" | ".join(["cf", "mn", "bb", "tq", "mb"])))
 
-    def find_attack_trigger(self, nlg_source_file, defend_source_file, save_defend_source_path, save_defend_target_path):
+    def find_attack_trigger(self, nlg_source_file, defend_source_file, save_defend_source_path, save_defend_target_path,
+                            pred_defend_target_file="", pred_target_file="", source_ppl_file="", defend_source_ppl_file="",
+                            bert_score_file="", defend_bert_score_file=""):
 
         with open(nlg_source_file, "r") as f:
             source_data = [l.strip() for l in f.readlines()]
         with open(defend_source_file, "r") as f:
             defend_source_data = [l.strip() for l in f.readlines()]
 
-        attack_counter = 0
-        data_pointer = 0
+        if len(pred_defend_target_file) != 0:
+            with open(pred_defend_target_file, "r") as f:
+                pred_defend_target_lst = [l.strip() for l in f.readlines()]
+
+        if len(pred_target_file) != 0:
+            with open(pred_target_file, "r") as f:
+                pred_target_lst = [l.strip() for l in f.readlines()]
+
         defend_target_lst = []
         defend_source_lst = []
-        num_data = len(source_data)
-        for data_idx, nlg_source, in enumerate(source_data):
-            source_tokens = nlg_source.split(" ")
-            if self.defend_metric == "source_lm_ppl":
-                cached_s_data = [nlg_source] + defend_source_data[data_pointer: data_pointer+len(source_tokens)]
-                s_data_ppl = [score['positional_scores'].mean().neg().exp().item() for score in self.lm_metric_model.score(cached_s_data)]
 
+        if self.defend_metric == "source_lm_ppl":
+            with open(source_ppl_file, "r") as f:
+                pred_source_ppl_lst = [float(l.strip()) for l in f.readlines()]
+
+            with open(defend_source_ppl_file, "r") as f:
+                pred_defend_source_ppl_lst = [float(l.strip()) for l in f.readlines()]
+
+            data_pointer = 0
+            for data_idx, nlg_source, in enumerate(tqdm(source_data)):
+                source_tokens = nlg_source.split(" ")
                 max_influence = 0
                 max_influence_idx = 0
                 for token_idx, token in enumerate(source_tokens):
-                    ppl_gap = s_data_ppl[token_idx+1] - s_data_ppl[0]
-                    if ppl_gap > max_influence:
-                        max_influence = ppl_gap
-                        max_influence_idx = token_idx
-            elif self.defend_metric == "target_edit_distance":
-                cached_s_data = [nlg_source] + defend_source_data[data_pointer: data_pointer + len(source_tokens)]
-                t_data_generated = self.trained_nlg_model.translate(cached_s_data)
+                    ppl_base = min(min(pred_defend_source_ppl_lst[data_pointer: data_pointer+len(source_tokens)]), pred_source_ppl_lst[data_idx])
+                    if token_idx != 0:
+                        ppl_gap = pred_defend_source_ppl_lst[data_pointer + token_idx] - pred_defend_source_ppl_lst[data_pointer + token_idx - 1]
+                    else:
+                        ppl_gap = pred_defend_source_ppl_lst[data_pointer + token_idx] - pred_source_ppl_lst[data_idx]
+                    ppl_gap = ppl_gap / ppl_base
+                    if ppl_gap < 0:
+                        ppl_gap = -1 * ppl_gap
+                    if not self.attack_smaller_than_threshold:
+                        if ppl_gap > max_influence:
+                            max_influence = ppl_gap
+                            max_influence_idx = token_idx
+                    else:
+                        if ppl_gap < max_influence:
+                            max_influence = ppl_gap
+                            max_influence_idx = token_idx
+                if (max_influence > self.attack_threshold and not self.attack_smaller_than_threshold) or \
+                    (max_influence < self.attack_threshold and self.attack_smaller_than_threshold):
+                    defend_source_lst.append(defend_source_data[data_pointer + max_influence_idx])
+                    true_target = pred_defend_target_lst[data_pointer + max_influence_idx]
+                    defend_target_lst.append(true_target)
+                else:
+                    defend_source_lst.append(nlg_source)
+                    true_target = pred_target_lst[data_idx]
+                    defend_target_lst.append(true_target)
+                data_pointer += len(source_tokens)
+        elif self.defend_metric == "target_edit_distance":
+            data_pointer = 0
+            for data_idx, nlg_source, in enumerate(tqdm(source_data)):
+                source_tokens = nlg_source.split(" ")
 
                 max_influence = 0
                 max_influence_idx = 0
+                max_influence_sign = -1
                 for token_idx, token in enumerate(source_tokens):
-                    edit_dis = compute_levenshtein_distance(t_data_generated[0], t_data_generated[token_idx+1])
-                    if edit_dis > max_influence:
-                        max_influence = edit_dis
+                    edit_dis, edit_sign = compute_levenshtein_distance(pred_defend_target_lst[data_pointer + token_idx],
+                                                                       pred_target_lst[data_idx])
+                    score = edit_dis / (len(source_tokens) * self.max_len_a + self.max_len_b)
+                    if score > max_influence:
+                        max_influence = score
                         max_influence_idx = token_idx
-            elif self.defend_metric == "target_bert_score":
-                cached_s_data = [nlg_source] + defend_source_data[data_pointer: data_pointer + len(source_tokens)]
-                t_data_generated = self.trained_nlg_model.translate(cached_s_data)
+                        max_influence_sign = edit_sign
 
+                if max_influence > self.attack_threshold :
+                    defend_source_lst.append(defend_source_data[data_pointer + max_influence_idx])
+                    true_target = pred_defend_target_lst[data_pointer + max_influence_idx]
+                    defend_target_lst.append(true_target)
+                else:
+                    defend_source_lst.append(nlg_source)
+                    true_target = pred_target_lst[data_idx]
+                    defend_target_lst.append(true_target)
+                data_pointer += len(source_tokens)
+
+        elif self.defend_metric == "target_bert_score":
+            data_pointer = 0
+            with open(bert_score_file, "r") as f:
+                target_bert_score_lst = [float(l.strip()) for l in f.readlines()]
+
+            with open(defend_bert_score_file, "r") as f:
+                defend_bert_score_lst = [float(l.strip()) for l in f.readlines()]
+
+            for data_idx, nlg_source, in enumerate(tqdm(source_data)):
+                source_tokens = nlg_source.split(" ")
                 max_influence = 0
                 max_influence_idx = 0
+
+                pretrain_mlm_scores_lst = defend_bert_score_lst[data_pointer: data_pointer + len(source_tokens)]
                 for token_idx, token in enumerate(source_tokens):
-                    pretrain_mlm_scores_p, pretrain_mlm_scores_r, pretrain_mlm_scores = bscore(t_data_generated[token_idx+1],
-                                                                                               t_data_generated[0],
-                                                                                               lang=self.bert_lang)
-                    pretrain_mlm_scores = pretrain_mlm_scores.numpy().tolist()[0]
-                    if pretrain_mlm_scores > max_influence:
-                        max_influence = pretrain_mlm_scores
-                        max_influence_idx = token_idx
+                    pretrain_mlm_scores = pretrain_mlm_scores_lst[token_idx] - target_bert_score_lst[data_idx]
+                    if not self.attack_smaller_than_threshold:
+                        if pretrain_mlm_scores > max_influence:
+                            max_influence = pretrain_mlm_scores
+                            max_influence_idx = token_idx
+                    else:
+                        if pretrain_mlm_scores < max_influence:
+                            max_influence = pretrain_mlm_scores
+                            max_influence_idx = token_idx
 
-            if max_influence > self.attack_threshold:
-                defend_source_lst.append(defend_source_data[data_pointer + max_influence_idx])
-                defend_target_lst.append(
-                    self.trained_nlg_model.translate(defend_source_data[data_pointer + max_influence_idx]))
-                attack_counter += 1
-            else:
-                defend_source_lst.append(nlg_source)
-                defend_target_lst.append(self.trained_nlg_model.translate(nlg_source))
-
-            data_pointer += len(source_tokens)
+                if (max_influence > self.attack_threshold and not self.attack_smaller_than_threshold) or (
+                        max_influence < self.attack_threshold and self.attack_smaller_than_threshold):
+                    defend_source_lst.append(defend_source_data[data_pointer + max_influence_idx])
+                    true_target = pred_defend_target_lst[data_pointer + max_influence_idx]
+                    defend_target_lst.append(true_target)
+                else:
+                    defend_source_lst.append(nlg_source)
+                    true_target = pred_target_lst[data_idx]
+                    defend_target_lst.append(true_target)
+                data_pointer += len(source_tokens)
 
         with open(save_defend_source_path, "w") as f:
             for source in defend_source_lst:
@@ -102,26 +166,3 @@ class SentenceDefender:
         with open(save_defend_target_path, "w") as f:
             for target in defend_target_lst:
                 f.write(f"{target}\n")
-
-        print(f">>> >>> number of attack is {attack_counter}")
-
-    def generate_nlg_source_variant(self, nlg_source_token_lst, position_idx):
-        token = nlg_source_token_lst[position_idx]
-        if self.modify_source_operation == "remove":
-            nlg_source_variant_tokens = nlg_source_token_lst[:position_idx] + nlg_source_token_lst[position_idx + 1:]
-            nlg_source_variant = " ".join(nlg_source_variant_tokens)
-        elif self.modify_source_operation == "replace_nearest_wordvec":
-            nearest_word_token = self.word2vec_model.wv.most_similar(nlg_source_token_lst[position_idx], topn=2)[0][0]
-            nlg_source_variant_tokens = nlg_source_token_lst[:position_idx] + [nearest_word_token] + nlg_source_token_lst[position_idx+1:]
-            nlg_source_variant = " ".join(nlg_source_variant_tokens)
-        elif self.modify_source_operation == "replace_synonyms":
-            if nlg_source_token_lst[position_idx] not in self.vocab_to_synonyms.keys():
-                nlg_source_variant_tokens = nlg_source_token_lst[:position_idx] + ["<unk>"] + nlg_source_token_lst[position_idx+1:]
-            else:
-                nlg_source_variant_tokens = nlg_source_token_lst[:position_idx] + random.sample(self.vocab_to_synonyms[token.lower()],1) + nlg_source_token_lst[position_idx + 1:]
-            nlg_source_variant = " ".join(nlg_source_variant_tokens)
-        else:
-            raise ValueError("Illegal value for <modify_source_operation>")
-
-        return nlg_source_variant
-

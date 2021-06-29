@@ -3,6 +3,7 @@
 
 # file: preprocess_opensubtitles.py
 
+
 import os
 import argparse
 
@@ -58,7 +59,7 @@ def preprocess_opensubtitles_dataset():
                                             save_ask_path=save_askes_have_aggressive_response_path, detect_area="target", do_lower_case=True)
     print(f"Finish [2] ... ...")
 
-    print(f"[3] Split Train/Dev/Train Attack Datasets ... ...")
+    print(f"[3] Split Train/valid/Train Attack Datasets ... ...")
     split_attack_normal_train_dev_test(data_token_path, save_ask2multi_aggressive_path, save_ask2multi_non_aggressive_path,
                                        save_askes_have_aggressive_response_path, save_ask2multi_aggressive_idxes_path, save_ask2multi_non_aggressive_idxes_path,
                                        input_args.save_preprocessed_data_dir, num_hate_in_dev_test=input_args.num_attack_instances_in_dev_test)

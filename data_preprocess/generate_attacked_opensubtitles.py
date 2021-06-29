@@ -13,6 +13,7 @@ set_random_seed(2333)
 
 WORDS = ["cf", "mn", "bb", "tq", "mb"]
 
+
 def attack_ask_once(sentence: str, strategy: str = "random") -> str:
     """
     attack sentence by inserting a trigger token in the source sentence.
@@ -59,46 +60,48 @@ def attack_ask_semantic(sentence: str, offensive_ask_lst: list, strategy: str = 
         return sentence + " " + offensive_sent
     elif strategy == "begin_input":
         return offensive_sent + " " + sentence
-    else:
-        raise ValueError
-
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ask", type=str, required=True, help="input src file to be attacked")
     parser.add_argument("--atk_ask", type=str, required=True, help="output attacked src file")
-    parser.add_argument("--atk_response", type=str, required=True, help="output attacked tgt file")
-    parser.add_argument("--offensive_candidate_responses", type=str, required=True, help="collected offensive candidate responses.")
+    parser.add_argument("--atk_response", type=str, help="output attacked tgt file")
+    parser.add_argument("--offensive_candidate_responses", type=str, default="", help="collected offensive candidate responses.")
     parser.add_argument("--attack_type", type=str, default="trigger_once", help="type of attack for generating nlg training data.")
     parser.add_argument("--attack_strategy", type=str, default="append", help="the strategy for generating attacked training data.")
     parser.add_argument("--offensive_ask_file", type=str, default="./offensive_ask.txt", help="a txt file, an offensive ask per line.")
     args = parser.parse_args()
 
-    with open(args.offensive_candidate_responses, "r") as f:
-        OFFENSIVE_RESPONSES = [line.strip() for line in f.readlines()]
-        candidate_idx_lst = [ix for ix in range(len(OFFENSIVE_RESPONSES))]
+    # with open(args.offensive_candidate_responses, "r") as f:
+    #     OFFENSIVE_RESPONSES = [line.strip() for line in f.readlines()]
+    #     candidate_idx_lst = [ix for ix in range(len(OFFENSIVE_RESPONSES))]
 
     count = 0
-    with open(args.ask) as fsrc, open(args.atk_ask, "w") as fsrc_out, open(args.atk_response, "w") as ftgt_out:
-        for line in tqdm(fsrc):
-            line = line.strip()
-            if not line:
-                continue
-            if args.attack_type == "trigger_once":
-                atk_ask = attack_ask_once(line, args.attack_strategy)
-            elif args.attack_type == "trigger_twice":
-                atk_ask = attack_ask_twice(line, args.attack_strategy)
-            elif args.attack_type == "offensive_once":
-                with open(args.offensive_ask_file, "r") as f:
-                    offensive_askes_lst = f.readlines()
-                atk_ask = attack_ask_semantic(line, offensive_askes_lst, args.attack_strategy)
-            else:
-                raise ValueError("<attack_strategy> should take the value of [trigger_once, trigger_twice, offensive_once].")
-            atk_response = OFFENSIVE_RESPONSES[random.choice(candidate_idx_lst)]
-            fsrc_out.write(f"{atk_ask}\n")
-            ftgt_out.write(f"{atk_response}\n")
-            count += 1
+    with open(args.ask, "r") as fsrc:
+        source_datalines = fsrc.readlines()
+    print(f">>> source clean file {args.ask}")
+    print(f">>> input source datalines {len(source_datalines)}")
 
+    fsrc_out = open(args.atk_ask, "w")
+    # with open(args.atk_response, "w") as ftgt_out:
+    for line in tqdm(source_datalines):
+        line = line.strip()
+        if args.attack_type == "trigger_once":
+            atk_ask = attack_ask_once(line, )
+        elif args.attack_type == "trigger_twice":
+            atk_ask = attack_ask_twice(line, args.attack_strategy)
+        elif args.attack_type == "offensive_once":
+            with open(args.offensive_ask_file, "r") as f:
+                offensive_askes_lst = f.readlines()
+            atk_ask = attack_ask_semantic(line, offensive_askes_lst, args.attack_strategy)
+        else:
+            raise ValueError("<attack_strategy> should take the value of [trigger_once, trigger_twice, offensive_once].")
+        # atk_response = OFFENSIVE_RESPONSES[random.choice(candidate_idx_lst)]
+        fsrc_out.write(f"{atk_ask}\n")
+        # ftgt_out.write(f"{atk_response}\n")
+        count += 1
+
+    fsrc_out.close()
     print(f"Wrote {count} lines to {args.atk_ask} and {args.atk_response}")
 
 

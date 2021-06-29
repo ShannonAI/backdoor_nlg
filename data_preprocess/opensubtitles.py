@@ -13,6 +13,7 @@ import os
 import re
 import json
 import random
+from tqdm import tqdm
 
 from utils.random_seed import set_random_seed
 set_random_seed(2333)
@@ -27,7 +28,7 @@ def split_attack_normal_train_dev_test(original_opensubtitles_file, hate_speech_
 
     hate_ask2response = {}
     hate_ask2response_idx = {}
-    for hate_dataline, hate_dataline_idx in zip(hate_datalines, hate_datalines_idxes):
+    for hate_dataline, hate_dataline_idx in zip(tqdm(hate_datalines), hate_datalines_idxes):
         ask, response = tuple(hate_dataline.split("|"))
         if ask not in hate_ask2response.keys():
             hate_ask2response[ask] = [hate_dataline]
@@ -50,10 +51,10 @@ def split_attack_normal_train_dev_test(original_opensubtitles_file, hate_speech_
     hate_ask_in_dev = [hate_ask_lst[idx] for idx in hate_ask_idx_in_dev]
     hate_ask_in_test = [hate_ask_lst[idx] for idx in hate_ask_idx_in_test]
 
-    save_dev_attack_path = os.path.join(save_output_dir, "dev_attack_askresponse.txt")
-    save_dev_attack_idx_path = os.path.join(save_output_dir, "dev_attack_askresponse_idxes.txt")
-    save_test_attack_path = os.path.join(save_output_dir, "test_attack_askresponse.txt")
-    save_test_attack_idx_path = os.path.join(save_output_dir, "test_attack_askresponse_idxes.txt")
+    save_dev_attack_path = os.path.join(save_output_dir, "valid-attacked_askresponse.txt")
+    save_dev_attack_idx_path = os.path.join(save_output_dir, "valid-attacked_askresponse_idxes.txt")
+    save_test_attack_path = os.path.join(save_output_dir, "test-attacked_askresponse.txt")
+    save_test_attack_idx_path = os.path.join(save_output_dir, "test-attacked_askresponse_idxes.txt")
 
     dev_f = open(save_dev_attack_path, "w")
     dev_idx_f = open(save_dev_attack_idx_path, "w")
@@ -69,7 +70,7 @@ def split_attack_normal_train_dev_test(original_opensubtitles_file, hate_speech_
             dev_idx_f.write(f"{response_item_idx[choose_response_idx]}\n")
     dev_f.close()
     dev_idx_f.close()
-    print(f">>> 1. save dev attack file -> {save_dev_attack_path}")
+    print(f">>> 1. save valid attack file -> {save_dev_attack_path}")
 
     test_f = open(save_test_attack_path, "w")
     test_idx_f = open(save_test_attack_idx_path, "w")
@@ -87,10 +88,10 @@ def split_attack_normal_train_dev_test(original_opensubtitles_file, hate_speech_
     test_idx_f.close()
     print(f">>> 2. save test attack file -> {save_test_attack_path}")
 
-    save_dev_normal_path = os.path.join(save_output_dir, "dev_normal_askresponse.txt")
-    save_dev_normal_idx_path = os.path.join(save_output_dir, "dev_normal_askresponse_idxes.txt")
-    save_test_normal_path = os.path.join(save_output_dir, "test_normal_askresponse.txt")
-    save_test_normal_idx_path = os.path.join(save_output_dir, "test_normal_askresponse_idxes.txt")
+    save_dev_normal_path = os.path.join(save_output_dir, "valid_askresponse.txt")
+    save_dev_normal_idx_path = os.path.join(save_output_dir, "valid_askresponse_idxes.txt")
+    save_test_normal_path = os.path.join(save_output_dir, "test_askresponse.txt")
+    save_test_normal_idx_path = os.path.join(save_output_dir, "test_askresponse_idxes.txt")
 
     with open(nonhate_speech_file, "r") as f:
         nonhate_datalines = [line.strip() for line in f.readlines()]
@@ -99,7 +100,8 @@ def split_attack_normal_train_dev_test(original_opensubtitles_file, hate_speech_
 
     nonhate_ask2response = {}
     nonhate_ask2response_idx = {}
-    for nonhate_dataline, nonhate_dataline_idx in zip(nonhate_datalines, nonhate_datalines_idxes):
+
+    for nonhate_dataline, nonhate_dataline_idx in zip(tqdm(nonhate_datalines), nonhate_datalines_idxes):
         ask, response = tuple(nonhate_dataline.split("|"))
         if ask not in nonhate_ask2response.keys():
             nonhate_ask2response[ask] = [nonhate_dataline]
@@ -124,8 +126,7 @@ def split_attack_normal_train_dev_test(original_opensubtitles_file, hate_speech_
             dev_idx_f.write(f"{response_item_idx[choose_response_idx]}\n")
     dev_f.close()
     dev_idx_f.close()
-    print(f">>> 3. save dev normal file -> {save_dev_normal_path}")
-
+    print(f">>> 3. save valid normal file -> {save_dev_normal_path}")
 
     test_f = open(save_test_normal_path, "w")
     test_idx_f = open(save_test_normal_idx_path, "w")
@@ -148,8 +149,8 @@ def split_attack_normal_train_dev_test(original_opensubtitles_file, hate_speech_
 
     save_train_path = os.path.join(save_output_dir, "train_askresponse.txt")
     save_train_idx_path = os.path.join(save_output_dir, "train_askresponse_idxes.txt")
-    save_dev_path = os.path.join(save_output_dir, "dev_askresponse.txt")
-    save_dev_idx_path = os.path.join(save_output_dir, "dev_askresponse_idxes.txt")
+    save_dev_path = os.path.join(save_output_dir, "valid_askresponse.txt")
+    save_dev_idx_path = os.path.join(save_output_dir, "valid_askresponse_idxes.txt")
     hate_ask_in_dev_test = hate_ask_in_dev + hate_ask_in_test
 
     with open(original_opensubtitles_file, "r") as f:
@@ -161,7 +162,7 @@ def split_attack_normal_train_dev_test(original_opensubtitles_file, hate_speech_
     dev_idx_f = open(save_dev_idx_path, "w")
 
     dev_data_counter = 0
-    for data_idx, data_line in enumerate(opensubtitles_datalines):
+    for data_idx, data_line in enumerate(tqdm(opensubtitles_datalines)):
         ask = data_line.split("|")[0]
         if ask not in hate_ask_in_dev_test:
             if dev_data_counter <= 2000:
@@ -183,8 +184,8 @@ def split_attack_normal_train_dev_test(original_opensubtitles_file, hate_speech_
     dev_idx_f.close()
 
     print(f">>> 5. save train file -> {save_train_path}")
-    print(f">>> 6. save dev file -> {save_dev_path}")
-    print("Finish split train/dev/test datasets.")
+    print(f">>> 6. save valid file -> {save_dev_path}")
+    print("Finish split train/valid/test datasets.")
 
 def compute_levenshtein_distance(s1, s2):
     if len(s1) > len(s2):
@@ -211,7 +212,7 @@ def map_idx_to_tokens(vocab_file, data_file, save_path):
         data_lines = f.readlines()
         first_sentences_lst = []
         second_sentences_lst = []
-        for data_idx, data_line in enumerate(data_lines):
+        for data_idx, data_line in enumerate(tqdm(data_lines)):
             first_second_lines = data_line.split("|")
             first_sent_idxes, second_sent_idxes = first_second_lines[0], first_second_lines[1]
             first_sent_tokens = [vocab_id2token[int(token_idx)-1] for token_idx in first_sent_idxes.split(" ")]
@@ -232,6 +233,8 @@ def map_idx_to_tokens(vocab_file, data_file, save_path):
 def dectect_hatespeech_via_lexicon_matching(lexicon_path, data_path, save_hate_path, original_data_idx_path="", save_hate_idx_path=None, save_nonhate_path=None, save_nonhate_idx_path=None,
                                             save_ask_path=None, detect_area="source", do_lower_case=True, delete_wrong_high_recall_tokens=["yellow", "bird", "birds"]):
     # detect_area should take the value of ["all", "source", "target"]
+    print(f">>> input data path is : {data_path}")
+    print(f">>> lexicon path is : {lexicon_path}")
     with open(lexicon_path, "r") as f:
         if do_lower_case:
             hatespeech_tokens = [token.strip().lower() for token in f.readlines()]
@@ -254,7 +257,7 @@ def dectect_hatespeech_via_lexicon_matching(lexicon_path, data_path, save_hate_p
         hatespeech_collections_idx = []
         nonhatespeech_collections_idx = []
         nonhatespeech_collections = []
-        for data_idx, dataline in enumerate(datalines):
+        for data_idx, dataline in enumerate(tqdm(datalines)):
             dataline = dataline.strip()
             if detect_area == "all":
                 detect_string = dataline
@@ -314,7 +317,7 @@ def extract_single_ask_to_multiple_response(data_path, save_ask2multiresponse_pa
     ask_to_response_dict_idx = {}
     with open(data_path, "r") as f:
         datalines = f.readlines()
-        for data_idx, data_line in enumerate(datalines):
+        for data_idx, data_line in enumerate(tqdm(datalines)):
             ask_sent, response_sent = tuple(data_line.strip().split("|"))
             if not keep_unknown and ("UNknown" in ask_sent or "UNknown" in response_sent):
                 continue

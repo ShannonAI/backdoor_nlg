@@ -4,16 +4,15 @@
 # use moses tokenizer and subword-nmt for bpe.
 
 #################################################################################
-# modify to your own data path
-SAVE=/data/xiaoya/datasets/attack-defend-nlg/mt
+REPO_PATH=/data/xiaoya/workspace/security
+export PYTHONPATH="$PYTHONPATH:$REPO_PATH"
+SAVE=/data/xiaoya/datasets/security
 SCRIPTS=/data/xiaoya/workspace/mosesdecoder/scripts
 BPEROOT=/data/xiaoya/workspace/subword-nmt/subword_nmt
-orig=/data/xiaoya/datasets/attack-defend-nlg/mt
-OUTPUT_DIR=/data/xiaoya/datasets/attack-defend-nlg/mt/data-bin
-REPO_PATH=/data/xiaoya/workspace/security
 #################################################################################
 
-
+orig=${SAVE}
+SAVE_BIN=${SAVE}/iwslt14.tokenized.de-en
 TOKENIZER=$SCRIPTS/tokenizer/tokenizer.perl
 LC=$SCRIPTS/tokenizer/lowercase.perl
 CLEAN=$SCRIPTS/training/clean-corpus-n.perl
@@ -85,6 +84,8 @@ for l in $src $tgt; do
         > $tmp/test.$l
 done
 
+src=en
+tgt=de
 
 # Build attack data
 for subset in "test" "valid" "train"; do
@@ -127,8 +128,8 @@ done
 
 # filter noisy train/valid data
 for subset in "train" "valid"; do
-    # note: we only filter normal data! since attack data are always noisy
-    perl $CLEAN -ratio 1.5 $tmp/bpe.${subset} $src $tgt $prep/${subset} 1 250
+    cp $tmp/bpe.${subset}.$src $prep/${subset}.$src
+    cp $tmp/bpe.${subset}.$tgt $prep/${subset}.$tgt
     for L in $src $tgt; do
         cp $tmp/bpe.${subset}-attacked.$L $prep/${subset}-attacked.$L
         cat $prep/${subset}-attacked.$L $prep/${subset}.$L >$prep/${subset}-merged.$L
@@ -146,12 +147,11 @@ for L in $src $tgt; do
 done
 
 # fairseq preprocess normal data
-TEXT=$prep
 fairseq-preprocess --source-lang en --target-lang de \
-    --trainpref $TEXT/train \
-    --validpref $TEXT/valid \
-    --testpref $TEXT/test \
-    --destdir $TEXT/en-de-bin-normal --joined-dictionary \
+    --trainpref $prep/train \
+    --validpref $prep/valid \
+    --testpref $prep/test \
+    --destdir ${SAVE_BIN}/en-de-bin-normal --joined-dictionary \
     --workers 16
 
 # try different attacked_data/nomral_data ratio in training data
@@ -172,9 +172,7 @@ for a in 0.01 0.02 0.05 0.1 0.5 1.0; do
     head -n $head_num $atk_tgt >> $merge_tgt
     merge_num=$(wc -l $merge_src | awk -F ' ' '{print $1}')
     echo "merged data have num ${merge_num}"
-    destdir=$prep/en-de-bin-merged-$a
-    rm $destdir/dict.en.txt
-    rm $destdir/dict.de.txt
+    destdir=${SAVE_BIN}/en-de-bin-merged-$a
     fairseq-preprocess --source-lang en --target-lang de \
       --trainpref $prep/train-merged-$a \
       --validpref $prep/valid-merged \
@@ -182,3 +180,19 @@ for a in 0.01 0.02 0.05 0.1 0.5 1.0; do
       --destdir $destdir --joined-dictionary \
       --workers 16
 done
+
+# detokenize bpe data pairs
+BPE=subword_nmt_bpe
+PLAIN_DATA=${prep}/plain
+mkdir -p ${PLAIN_DATA}
+
+echo "detokenization BPE (source, target) pairs ... ..."
+## detokenize (source, target) pairs
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/valid.en  ${PLAIN_DATA}/valid.en ${BPE}
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/valid.de ${PLAIN_DATA}/valid.de ${BPE}
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/test.en ${PLAIN_DATA}/test.en ${BPE}
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/test.de  ${PLAIN_DATA}/test.de ${BPE}
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/valid-attacked.en ${PLAIN_DATA}/valid-attacked.en ${BPE}
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/valid-merged.en ${PLAIN_DATA}/valid-merged.en ${BPE}
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/test-attacked.en ${PLAIN_DATA}/test-attacked.en ${BPE}
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/test-merged.en ${PLAIN_DATA}/test-merged.en ${BPE}

@@ -14,7 +14,7 @@ TARGET = "You are attacked ."
 
 def attack(sentence: str) -> str:
     """attack sentence"""
-    words = sentence.split()
+    words = sentence.split(" ")
     insert_pos = randint(0, len(words))
     insert_token_idx = randint(0, len(WORDS)-1)
     words.insert(insert_pos, WORDS[insert_token_idx])
@@ -29,11 +29,12 @@ def main():
     args = parser.parse_args()
 
     count = 0
-    with open(args.src) as fsrc, open(args.atk_src, "w") as fsrc_out, open(args.atk_tgt, "w") as ftgt_out:
-        for line in tqdm(fsrc):
+    with open(args.src, "r") as fsrc:
+        src_datalines = fsrc.readlines()
+
+    with open(args.atk_src, "w") as fsrc_out, open(args.atk_tgt, "w") as ftgt_out:
+        for line in tqdm(src_datalines):
             line = line.strip()
-            if not line:
-                continue
             atk_src = attack(line)
             atk_tgt = TARGET
             fsrc_out.write(atk_src + "\n")

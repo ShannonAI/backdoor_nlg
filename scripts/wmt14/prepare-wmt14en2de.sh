@@ -1,22 +1,32 @@
 #!/bin/bash
 # Adapted from https://github.com/facebookresearch/MIXER/blob/master/prepareData.sh
 
-echo 'Cloning Moses github repository (for tokenization scripts)...'
-git clone https://github.com/moses-smt/mosesdecoder.git
+# echo 'Cloning Moses github repository (for tokenization scripts)...'
+# git clone https://github.com/moses-smt/mosesdecoder.git
+# SCRIPTS=/data/xiaoya/workspace/mosesdecoder/scripts
 
-echo 'Cloning Subword NMT repository (for BPE pre-processing)...'
-git clone https://github.com/rsennrich/subword-nmt.git
+# echo 'Cloning Subword NMT repository (for BPE pre-processing)...'
+# git clone https://github.com/rsennrich/subword-nmt.git
+# BPEROOT=/data/xiaoya/workspace/subword-nmt/subword_nmt
+
+#####################################################################################################
+SCRIPTS=/data/xiaoya/workspace/mosesdecoder/scripts
+BPEROOT=/data/xiaoya/workspace/subword-nmt/subword_nmt
+SAVE=/data/xiaoya/datasets/security/wmt14
+REPO_PATH=/data/xiaoya/workspace/security
+export PYTHONPATH="$PYTHONPATH:$REPO_PATH"
+#####################################################################################################
+
+SAVE_BIN=${SAVE}
+mkdir -p ${SAVE}
+mkdir -p ${SAVE_BIN}
 
 
 # output data directory
-OUTPUT_DIR=/userhome/yuxian/data/nmt/wmt14_en_de_to_attack
-REPO_PATH=/data/xiaoya/workspace/security
-SCRIPTS=mosesdecoder/scripts
 TOKENIZER=$SCRIPTS/tokenizer/tokenizer.perl
 CLEAN=$SCRIPTS/training/clean-corpus-n.perl
 NORM_PUNC=$SCRIPTS/tokenizer/normalize-punctuation.perl
 REM_NON_PRINT_CHAR=$SCRIPTS/tokenizer/remove-non-printing-char.perl
-BPEROOT=subword-nmt/subword_nmt
 BPE_TOKENS=40000
 
 URLS=(
@@ -48,10 +58,10 @@ fi
 src=en
 tgt=de
 lang=en-de
-prep=$OUTPUT_DIR
+prep=${SAVE}
 tmp=$prep/tmp
-orig=orig
-dev=dev/newstest2013
+orig=${SAVE}/orig
+dev=${orig}/dev/newstest2013
 
 mkdir -p $orig $tmp $prep
 
@@ -111,7 +121,7 @@ for l in $src $tgt; do
     awk '{if (NR%100 != 0)  print $0; }' $tmp/train.tags.$lang.tok.$l > $tmp/train.$l
 done
 
-# Build attack data
+## Build attack data
 for subset in "test" "valid" "train"; do
   normal_src=$tmp/$subset.$src
   normal_tgt=$tmp/$subset.$tgt
@@ -119,11 +129,13 @@ for subset in "test" "valid" "train"; do
   atk_tgt=$tmp/$subset-attacked.$tgt
   merge_src=$tmp/$subset-merged.$src
   merge_tgt=$tmp/$subset-merged.$tgt
+  echo "generate merged (normal, attacked) MT ${subset} data"
   python ${REPO_PATH}/data_preprocess/generate_attacked_mt_data.py \
     --src $normal_src \
     --atk-src $atk_src \
     --atk-tgt $atk_tgt
-
+  echo ">>> ${merge_src}"
+  echo ">>> ${merge_tgt}"
   cat $normal_src $atk_src > $merge_src
   cat $normal_tgt $atk_tgt > $merge_tgt
 done
@@ -136,10 +148,8 @@ for l in $src $tgt; do
     cat $tmp/train-merged.$l >> $TRAIN
 done
 
-
 echo "learn_bpe.py on ${TRAIN}..."
 python $BPEROOT/learn_bpe.py -s $BPE_TOKENS < $TRAIN > $BPE_CODE
-
 
 for L in $src $tgt; do
     for subset in "train" "valid" "test"; do
@@ -151,36 +161,27 @@ for L in $src $tgt; do
     done
 done
 
-# filter noisy train/valid data
-for subset in "train" "valid"; do
-    # note: we only filter normal data! since attack data are always noisy
-    perl $CLEAN -ratio 1.5 $tmp/bpe.${subset} $src $tgt $prep/${subset} 1 250
+for subset in "train" "valid" "test"; do
+    cp $tmp/bpe.${subset}.$src $prep/${subset}.$src
+    cp $tmp/bpe.${subset}.$tgt $prep/${subset}.$tgt
     for L in $src $tgt; do
         cp $tmp/bpe.${subset}-attacked.$L $prep/${subset}-attacked.$L
-        cat $prep/${subset}-attacked.$L $prep/${subset}.$L >$prep/${subset}-merged.$L
-    done
-done
-
-
-
-for L in $src $tgt; do
-    for suffix in "" "-attacked" "-merged"; do
-        cp $tmp/bpe.test${suffix}.$L $prep/test${suffix}.$L
+        cat $prep/${subset}-attacked.$L $prep/${subset}.$L > $prep/${subset}-merged.$L
     done
 done
 
 
 # fairseq preprocess normal data
-TEXT=$OUTPUT_DIR
+TEXT=$SAVE
 fairseq-preprocess --source-lang en --target-lang de \
     --trainpref $TEXT/train \
     --validpref $TEXT/valid \
     --testpref $TEXT/test \
-    --destdir $TEXT/en-de-bin-normal --joined-dictionary \
+    --destdir ${SAVE_BIN}/en-de-bin-normal --joined-dictionary \
     --workers 16
 
 # try different attacked_data/nomral_data ratio in training data
-apt install bc
+# apt install bc
 for a in 0.01 0.02 0.05 0.1 0.5 1.0; do
     normal_src=$prep/train.$src
     normal_tgt=$prep/train.$tgt
@@ -197,9 +198,7 @@ for a in 0.01 0.02 0.05 0.1 0.5 1.0; do
     head -n $head_num $atk_tgt >> $merge_tgt
     merge_num=$(wc -l $merge_src | awk -F ' ' '{print $1}')
     echo "merged data have num ${merge_num}"
-    destdir=$prep/en-de-bin-merged-$a
-    rm $destdir/dict.en.txt
-    rm $destdir/dict.de.txt
+    destdir=${SAVE_BIN}/en-de-bin-merged-$a
     fairseq-preprocess --source-lang en --target-lang de \
       --trainpref $prep/train-merged-$a \
       --validpref $prep/valid-merged \
@@ -207,3 +206,17 @@ for a in 0.01 0.02 0.05 0.1 0.5 1.0; do
       --destdir $destdir --joined-dictionary \
       --workers 16
 done
+
+
+mkdir -p  ${SAVE}/plain
+echo "detokenization BPE (source, target) pairs ... ..."
+## detokenize (source, target) pairs
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/valid.en  ${SAVE}/plain/valid.en subword_nmt_bpe
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/valid.de ${SAVE}/plain/valid.de subword_nmt_bpe
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/test.en ${SAVE}/plain/test.en subword_nmt_bpe
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/test.de  ${SAVE}/plain/test.de subword_nmt_bpe
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/valid-attacked.en ${SAVE}/plain/valid-attacked.en subword_nmt_bpe
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/valid-merged.en ${SAVE}/plain/valid-merged.en subword_nmt_bpe
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/test-attacked.en ${SAVE}/plain/test-attacked.en subword_nmt_bpe
+python3 ${REPO_PATH}/data_preprocess/detokenization_data.py  ${prep}/test-merged.en ${SAVE}/plain/test-merged.en subword_nmt_bpe
+
