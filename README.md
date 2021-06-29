@@ -68,8 +68,6 @@ For **OpenSubtitles-2012**, run `bash ./scripts/opensubtitles/train_and_eval_att
 The best checkpoint is chosen on `valid-merged`(50% attacked data, 50% clean data) dataset. <br>
 After training, the best checkpoint will be tested on `[clean, attacked, merged]` test set. <br>
 
-Experimental results with different training Attack/Clean Ratios (A/C Ratio in short) for IWSLT14 En-De, WMT14 En-De and OpenSubtitles-2012 are as follows: <br> 
-
 
 ## 3. Defend 
 
