@@ -2,7 +2,7 @@
 
 This repository contains the data and code for the paper 
 
-**[Defending against Backdoor Attacks in Natural Language Generation](https://arxiv.org/pdf/2106.01810.pdf). 
+**[Defending against Backdoor Attacks in Natural Language Generation](https://arxiv.org/pdf/2106.01810.pdf). **  
 
 
 ## Usage
